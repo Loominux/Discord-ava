@@ -31,14 +31,16 @@ async def on_voice_state_update(member, before, after):
 
     # Check if the VC Channel is permanent
     permanent = False
-    for item in voice_channel_owners:
-        if before.channel.id == item["VC_Channel_ID"]:
-            permanent = True
+    if before.channel:
+        for item in voice_channel_owners:
+            if before.channel.id == item["VC_Channel_ID"]:
+                permanent = True
+                break
 
     # If a VC is empty, delete it
     if before.channel and len(before.channel.members) == 0 and before.channel.id != config.CREATE_CHANNEL and not permanent:
-
         await before.channel.delete()
+
 
 # Slash Command for Bot Ping
 @bot.command(description="Sends the bot's latency.")
