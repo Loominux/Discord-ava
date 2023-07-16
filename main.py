@@ -41,7 +41,6 @@ async def on_voice_state_update(member, before, after):
     if before.channel and len(before.channel.members) == 0 and before.channel.id != config.CREATE_CHANNEL and not permanent:
         await before.channel.delete()
 
-
 # Slash Command for Bot Ping
 @bot.command(description="Sends the bot's latency.")
 async def ping(ctx):
@@ -61,13 +60,12 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
 
     # If the name was Empty, set the name to the users name
     if name is None:
-        name = ctx.author.name
+        name = "Permanent VC from" + ctx.author.name
 
     # Create new channel, give user permissions and respond to them
     new_channel = await category.create_voice_channel(name)
     await new_channel.set_permissions(ctx.author, manage_channels=True)
     await ctx.respond(f"Voice Channel {name} was successfully created", ephemeral=True)
-
 
     # Write User ID and VC Channel ID to the json
     Entry = {
