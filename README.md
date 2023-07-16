@@ -7,6 +7,10 @@ In contrast to temporary, the Bot can also create permanent Channels, these will
 A user has to have a specific Role to create these VCs and each User can only create one permanent Channel.
 Like the temporary Channels the User that ran the command will have all the Channel rights.
 
+## Requirements
+
+This bot needs `py-chord`
+
 ## Commands
 
 - `/vc_create` - creates a permanent Voice Chat Channel 
@@ -17,11 +21,13 @@ Like the temporary Channels the User that ran the command will have all the Chan
 This Bot needs a `config.js`, the file looks like this:
 
 ```py
-TOKEN = 'Token'
-CREATE_CHANNEL = ID
-VC_CATEGORY = ID
+TOKEN = 'string'
+CREATE_CHANNEL = int
+VC_CATEGORY = int
+PERMANENT_ROLES = [int, int] or int
 ```
 
 - `TOKEN` has to be your Bot Token, keep in Mind, that this has to be in `''` becuase it will be used as a string.
 - `CREATE_CHANNEL` is the ID of the Voice Chat Channel, that people can join to create new temporary ones.
 - `VC_CATEGORY` is the is the category in which the permanent Voice Channels will be created.
+- `PERMANENT_ROLES` one or more Role IDs that can create permanent Voice Channels

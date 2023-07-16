@@ -4,13 +4,29 @@ import config
 import json
 
 file_path = "vc_owners.json"
-with open(file_path, "r") as json_file:
-    voice_channel_owners = json.load(json_file)
+try:
+    with open(file_path, "r") as json_file:
+        try:
+            voice_channel_owners = json.load(json_file)
+        # Create Empty permanent VC list, when there is an JSON Decode error
+        except json.JSONDecodeError:
+            voice_channel_owners = []
+except FileNotFoundError:
+    # File not found, create a new file
+    with open(file_path, "w") as json_file:
+        json.dump([], json_file)
+    voice_channel_owners = []
+
 json_file.close()
 
-for item in voice_channel_owners:
-    print(item["User_ID"])
-    print(item["VC_Channel_ID"])
+print("Loading permanent Voice Channels:")
+
+if voice_channel_owners:
+    for item in voice_channel_owners:
+        print("User_ID: " + str(item["User_ID"]))
+        print("VC_Channel_ID: " + str(item["VC_Channel_ID"]) + "\n")
+
+print("Loading completed")
 
 bot = discord.Bot()
 
@@ -28,6 +44,7 @@ async def on_voice_state_update(member, before, after):
         new_channel = await guild.create_voice_channel(f'{member.name} VC', category=after.channel.category)
         await member.move_to(new_channel)
         await new_channel.set_permissions(member, manage_channels=True)
+        print("Temporary VC: " + member.name + " created VC with ID: " + str(new_channel.id))
 
     # Check if the VC Channel is permanent
     permanent = False
@@ -40,11 +57,13 @@ async def on_voice_state_update(member, before, after):
     # If a VC is empty, delete it
     if before.channel and len(before.channel.members) == 0 and before.channel.id != config.CREATE_CHANNEL and not permanent:
         await before.channel.delete()
+        print("Temporary VC: deleted VC with ID: " + str(before.channel.id))
 
 # Slash Command for Bot Ping
 @bot.command(description="Sends the bot's latency.")
 async def ping(ctx):
     await ctx.respond(f"Pong! Latency is {bot.latency} s", ephemeral=True)
+    print(str(ctx.author.name) + "(" + str(ctx.author.id) + ") " + "requested the Bot latency, the current Latency is: " + str(bot.latency) + "s")
 
 # Slash Command for VC Channel creation
 @bot.command(description="Create VC")
@@ -52,15 +71,21 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
     guild = ctx.guild
     category = discord.utils.get(guild.categories, id=config.VC_CATEGORY)
 
-    # Check if the VC Channel is permanent
+    # Check if the User already owns a VC
     for item in voice_channel_owners:
         if ctx.author.id == item["User_ID"]:
             await ctx.respond("You can only create one voice channel at a time.", ephemeral=True)
+            print("Permanent VC: " + str(ctx.author.name) + "(" + str(ctx.author.id) + ") " + "tried to create more than one permanent Voice Channels")
             return
+
+    if not any(role.id in config.PERMANENT_ROLES for role in ctx.author.roles):
+        await ctx.respond("You don't have the rights to create a permanent Voice Channel", ephemeral=True)
+        print("Permanent VC: " + str(ctx.author.name) + "(" + str(ctx.author.id) + ") " + "tried to create a permanent Voice Channel without the right role")
+        return
 
     # If the name was Empty, set the name to the users name
     if name is None:
-        name = "Permanent VC from" + ctx.author.name
+        name = "Permanent VC from " + ctx.author.name
 
     # Create new channel, give user permissions and respond to them
     new_channel = await category.create_voice_channel(name)
@@ -74,7 +99,7 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
     }
     voice_channel_owners.append(Entry)
 
-    print(Entry)
+    print("Permanent VC: " + str(ctx.author.name) + "(" + str(ctx.author.id) + ") " + "created Voice Channel " + str(Entry["VC_Channel_ID"]))
 
     with open(file_path, "w") as json_file:
         json.dump(voice_channel_owners, json_file, indent=4)
@@ -91,11 +116,11 @@ async def on_guild_channel_delete(channel):
         # Check if the VC Channel belongs to a User
         for item in voice_channel_owners:
             if deleted_channel_id == item["VC_Channel_ID"]:
+                print("Permanent VC: " + str(item["User_ID"]) + " deleted Voice Channel " + str(item["VC_Channel_ID"]))
                 voice_channel_owners.remove(item)
+                # Save the updated JSON data back to the file
+                with open(file_path, "w") as json_file:
+                    json.dump(voice_channel_owners, json_file, indent=4)
                 break  # Exit the loop once the item is found
-
-        # Save the updated JSON data back to the file
-        with open(file_path, "w") as json_file:
-            json.dump(voice_channel_owners, json_file, indent=4)
 
 bot.run(config.TOKEN)
