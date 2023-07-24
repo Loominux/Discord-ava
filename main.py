@@ -43,7 +43,6 @@ async def on_voice_state_update(member, before, after):
         guild = member.guild
         new_channel = await guild.create_voice_channel(f'{member.name} VC', category=after.channel.category)
         await member.move_to(new_channel)
-        await new_channel.set_permissions(member, manage_channels=True)
         print("Temporary VC: " + member.name + " created VC with ID: " + str(new_channel.id))
 
     # Check if the VC Channel is permanent
@@ -89,7 +88,6 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
 
     # Create new channel, give user permissions and respond to them
     new_channel = await category.create_voice_channel(name)
-    await new_channel.set_permissions(ctx.author, manage_channels=True)
     await ctx.respond(f"Voice Channel {name} was successfully created", ephemeral=True)
 
     # Write User ID and VC Channel ID to the json
@@ -105,6 +103,56 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
         json.dump(voice_channel_owners, json_file, indent=4)
 
     json_file.close()
+
+@bot.command(description="VC set Usercount")
+async def vc_set_users(ctx, user_count):
+    permanent = False
+    if ctx.author.id:
+        for item in voice_channel_owners:
+            if ctx.author.id == item["User_ID"]:
+                permanent = True
+                VCChannelID = discord.utils.get(bot.get_all_channels(), id=item["VC_Channel_ID"], type=discord.ChannelType.voice)
+                break
+
+    if ctx.author.voice:
+        IsOwner = False
+        if permanent:
+            if ctx.author.id == item["User_ID"]:
+                IsOwner = True
+
+        if permanent and IsOwner or not permanent:
+            if user_count == 0:
+                await ctx.author.voice.channel.edit(user_limit=None)
+            else:
+                await ctx.author.voice.channel.edit(user_limit=user_count)
+            await ctx.respond(f"Changed temporary VC User Count", ephemeral=True)
+    else:
+        if permanent:
+            if user_count == 0:
+                await VCChannelID.edit(user_limit=None)
+            else:
+                await VCChannelID.edit(user_limit=user_count)
+            await ctx.respond(f"Changed permanent VC User Count", ephemeral=True)
+
+        else:
+            await ctx.respond(f"You are not in a temporary and don't own an permanent VC", ephemeral=True)
+
+@bot.command(description="Delete VC")
+async def vc_delete(ctx):
+    permanent = False
+    if ctx.author.id:
+        for item in voice_channel_owners:
+            if ctx.author.id == item["User_ID"]:
+                permanent = True
+                VCChannelID = discord.utils.get(bot.get_all_channels(), id=item["VC_Channel_ID"], type=discord.ChannelType.voice)
+                break
+
+    if permanent:
+        await VCChannelID.delete()
+        await ctx.respond(f"Permanent VC deleted", ephemeral=True)
+
+    else:
+        await ctx.respond(f"You dont own an permanent VC", ephemeral=True)
 
 # Remove user from Owner List, when VC Channel is deleted
 @bot.event
