@@ -2,8 +2,12 @@ import typing
 import discord
 import config
 import json
+import time
+import schedule
+from datetime import datetime
 
 file_path = "vc_owners.json"
+
 try:
     with open(file_path, "r") as json_file:
         try:
@@ -24,7 +28,8 @@ print("Loading permanent Voice Channels:")
 if voice_channel_owners:
     for item in voice_channel_owners:
         print("User_ID: " + str(item["User_ID"]))
-        print("VC_Channel_ID: " + str(item["VC_Channel_ID"]) + "\n")
+        print("VC_Channel_ID: " + str(item["VC_Channel_ID"]))
+        print("Last_Join: " + str(item["Last_Join"])  + "\n")
 
 print("Loading completed")
 
@@ -57,6 +62,13 @@ async def on_voice_state_update(member, before, after):
     if before.channel and len(before.channel.members) == 0 and before.channel.id != config.CREATE_CHANNEL and not permanent:
         await before.channel.delete()
         print("Temporary VC: deleted VC with ID: " + str(before.channel.id))
+
+    if permanent:
+        item["Last_Join"] = datetime.now().timestamp()
+        with open(file_path, "w") as json_file:
+            json.dump(voice_channel_owners, json_file, indent=4)
+        json_file.close()
+
 
 # Slash Command for Bot Ping
 @bot.command(description="Sends the bot's latency.")
@@ -93,7 +105,8 @@ async def vc_create(ctx, name: typing.Optional[str] = None):
     # Write User ID and VC Channel ID to the json
     Entry = {
         "User_ID": ctx.author.id,
-        "VC_Channel_ID": new_channel.id
+        "VC_Channel_ID": new_channel.id,
+        "Last_Join": datetime.now().timestamp()
     }
     voice_channel_owners.append(Entry)
 
@@ -188,6 +201,14 @@ async def on_member_remove(member):
             with open(file_path, "w") as json_file:
                 json.dump(voice_channel_owners, json_file, indent=4)
             break  # Exit the loop once the item is found
+
+# check
+    for item in voice_channel_owners:
+        if item["Last_Join"] < datetime.now().timestamp() - 5259486:
+            VCChannelID = discord.utils.get(bot.get_all_channels(), id=item["VC_Channel_ID"], type=discord.ChannelType.voice)
+            await VCChannelID.delete()
+            print("Permanent VC: " + str(item["VC_Channel_ID"]) + " was deleted because it was inactive for 2 Months")
+
 
 
 
